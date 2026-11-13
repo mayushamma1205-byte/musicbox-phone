@@ -1,0 +1,519 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#16171a">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>MusicBox</title>
+<style>
+:root{--bg:#16171a;--panel:#1b1c20;--card:#26272c;--hover:#2b2c32;--edge:#34353c;--fg:#f2f2f2;--dim:#8a8c93;--acc:#8fb8ff;--warn:#ff8a80;--wash:22,23,26}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--fg);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;overscroll-behavior:none}
+body{display:flex;flex-direction:column;padding-top:env(safe-area-inset-top)}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+header{padding:14px 18px 6px;display:flex;align-items:baseline;gap:10px}
+header h1{font-size:22px;margin:0}
+header small{color:var(--dim);font-size:12px;margin-left:auto}
+.tabs{display:flex;gap:8px;padding:6px 14px}
+.tabs button,.chip{background:var(--card);padding:8px 16px;border-radius:20px;font-size:14px;color:var(--fg)}
+.tabs button.on,.chip.on{color:var(--acc)}
+.bar{display:flex;gap:8px;padding:4px 14px 8px;align-items:center}
+.bar input{flex:1;min-width:0;background:var(--card);border:0;color:var(--fg);padding:10px 14px;border-radius:12px;font-size:15px;outline:none}
+main{flex:1;overflow-y:auto;padding-bottom:150px;-webkit-overflow-scrolling:touch}
+.row{display:flex;align-items:center;gap:12px;padding:8px 14px;min-height:60px}
+.row:active{background:var(--hover)}
+.row.cur .t{color:var(--acc)}
+.thumb{width:44px;height:44px;border-radius:6px;background:var(--card);flex:none;object-fit:cover;display:flex;align-items:center;justify-content:center;color:var(--dim)}
+.meta{flex:1;min-width:0}
+.t{font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.s{font-size:12px;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px}
+.ib{width:40px;height:40px;border-radius:50%;color:var(--dim);font-size:18px;flex:none}
+.ib:active{background:var(--card)}
+.empty{padding:50px 30px;text-align:center;color:var(--dim);line-height:1.6}
+.fab{position:fixed;right:18px;bottom:calc(88px + env(safe-area-inset-bottom));background:var(--acc);color:#000;padding:14px 20px;border-radius:28px;font-weight:600;box-shadow:0 4px 14px #0008;z-index:5}
+#mini{position:fixed;left:0;right:0;bottom:0;background:var(--panel);border-top:1px solid var(--edge);padding:8px 14px calc(8px + env(safe-area-inset-bottom));display:flex;align-items:center;gap:12px;z-index:6}
+#mini .prog{position:absolute;left:0;top:0;height:2px;background:var(--acc);width:0}
+#mini .meta{cursor:pointer}
+#full{position:fixed;inset:0;z-index:10;background:var(--bg);display:flex;flex-direction:column;align-items:center;padding:calc(10px + env(safe-area-inset-top)) 22px calc(18px + env(safe-area-inset-bottom));transform:translateY(100%);transition:transform .22s ease;overflow:hidden}
+#full.open{transform:none}
+#full .bgwash{position:absolute;inset:0;z-index:-1;background:linear-gradient(160deg,rgba(var(--wash),.42),var(--bg) 70%)}
+#full .top{align-self:stretch;display:flex;justify-content:space-between}
+#cover{width:min(82vw,52vh);aspect-ratio:1;border-radius:12px;background:var(--card);object-fit:cover;margin-top:auto;display:flex;align-items:center;justify-content:center;font-size:64px;color:var(--dim)}
+#ftitle{font-size:21px;font-weight:700;margin-top:22px;text-align:center;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#fsub{color:var(--dim);margin-top:4px;min-height:20px;text-align:center}
+#err{color:var(--warn);font-size:13px;min-height:18px;margin-top:6px;text-align:center}
+.seek{align-self:stretch;margin-top:14px}
+input[type=range]{width:100%;accent-color:var(--acc);height:28px}
+.times{display:flex;justify-content:space-between;color:var(--dim);font-size:12px}
+.ctl{display:flex;align-items:center;justify-content:center;gap:14px;margin-top:10px;width:100%}
+.ctl button{width:54px;height:54px;border-radius:50%;font-size:22px}
+.ctl .play{background:var(--fg);color:#111;width:72px;height:72px;font-size:28px}
+.ctl .tog{font-size:13px;color:var(--dim);width:auto;padding:0 8px}
+.ctl .tog.on{color:var(--acc)}
+.vol{display:flex;gap:10px;align-items:center;align-self:stretch;margin:6px 0 auto;color:var(--dim);font-size:13px}
+#sheet{position:fixed;inset:0;z-index:20;background:#000a;display:none;align-items:flex-end}
+#sheet.open{display:flex}
+#sheet .box{background:var(--panel);width:100%;border-radius:16px 16px 0 0;padding:10px 0 calc(14px + env(safe-area-inset-bottom))}
+#sheet .box h3{margin:8px 18px 10px;font-size:15px;color:var(--dim);font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#sheet button{display:block;width:100%;text-align:left;padding:15px 20px;font-size:16px}
+#sheet button:active{background:var(--hover)}
+#sheet .danger{color:var(--warn)}
+#toast{position:fixed;left:50%;bottom:calc(110px + env(safe-area-inset-bottom));transform:translateX(-50%);background:var(--card);padding:10px 18px;border-radius:20px;font-size:14px;z-index:30;opacity:0;pointer-events:none;transition:opacity .2s;max-width:88vw;text-align:center}
+#toast.show{opacity:1}
+.hidden{display:none!important}
+</style>
+</head>
+<body>
+<header><h1>MusicBox</h1><small id="info"></small></header>
+<div class="tabs"><button id="tabLib" class="on">Library</button><button id="tabQ">Up Next</button></div>
+<div class="bar" id="libBar">
+  <input id="search" type="search" placeholder="Search title or artist" autocomplete="off">
+  <button class="chip on" id="sortBtn">Recent</button>
+</div>
+<main id="list"></main>
+<button class="fab" id="addBtn">+ Add songs</button>
+<input type="file" id="picker" accept="audio/*,.mp3,.m4a,.ogg,.wav,.flac,.opus" multiple hidden>
+<input type="file" id="coverPicker" accept="image/*" hidden>
+
+<div id="mini" class="hidden">
+  <div class="prog" id="mprog"></div>
+  <img class="thumb" id="mthumb" alt="">
+  <div class="meta" id="mopen"><div class="t" id="mtitle"></div><div class="s" id="msub"></div></div>
+  <button class="ib" id="mprev" aria-label="Previous">⏮</button>
+  <button class="ib" id="mplay" aria-label="Play or pause" style="color:var(--fg);font-size:22px">▶</button>
+  <button class="ib" id="mnext" aria-label="Next">⏭</button>
+</div>
+
+<section id="full">
+  <div class="bgwash"></div>
+  <div class="top"><button class="ib" id="fclose" aria-label="Close">⌄</button><button class="ib" id="fmenu" aria-label="Menu">⋮</button></div>
+  <img id="cover" alt="">
+  <div id="ftitle">Nothing playing</div><div id="fsub"></div><div id="err"></div>
+  <div class="seek"><input type="range" id="seek" min="0" max="1000" value="0"><div class="times"><span id="tcur">0:00</span><span id="tdur">--:--</span></div></div>
+  <div class="ctl">
+    <button class="tog" id="shuf">Shuffle</button>
+    <button id="prev" aria-label="Previous">⏮</button>
+    <button class="play" id="play" aria-label="Play or pause">▶</button>
+    <button id="next" aria-label="Next">⏭</button>
+    <button class="tog" id="rep">Repeat</button>
+  </div>
+  <div class="vol"><span>Vol</span><input type="range" id="vol" min="0" max="100" value="100"></div>
+</section>
+
+<div id="sheet"><div class="box" id="sheetBox"></div></div>
+<div id="toast"></div>
+<audio id="audio" preload="auto"></audio>
+
+<script>
+"use strict";
+const $ = s => document.querySelector(s);
+const audio = $("#audio");
+
+/* ---------- storage (IndexedDB): 'songs' = small info, 'files' = audio/cover blobs ---------- */
+let dbp;
+function db() {
+  if (!dbp) dbp = new Promise((res, rej) => {
+    const r = indexedDB.open("musicbox", 1);
+    r.onupgradeneeded = () => { r.result.createObjectStore("songs", {keyPath: "id"}); r.result.createObjectStore("files", {keyPath: "id"}); };
+    r.onsuccess = () => res(r.result);
+    r.onerror = () => rej(r.error);
+  });
+  return dbp;
+}
+async function dbDo(store, mode, fn) {
+  const d = await db();
+  return new Promise((res, rej) => {
+    const tx = d.transaction(store, mode), st = tx.objectStore(store);
+    let out; const rq = fn(st);
+    if (rq) rq.onsuccess = () => { out = rq.result; };
+    tx.oncomplete = () => res(out);
+    tx.onerror = tx.onabort = () => rej(tx.error);
+  });
+}
+const getAll = store => dbDo(store, "readonly", s => s.getAll());
+const getOne = (store, id) => dbDo(store, "readonly", s => s.get(id));
+const putOne = (store, v) => dbDo(store, "readwrite", s => s.put(v));
+const delOne = (store, id) => dbDo(store, "readwrite", s => s.delete(id));
+
+/* ---------- state ---------- */
+let songs = [], byId = new Map();
+let queue = [], qi = -1, orig = null;
+let shuffle = false, repeat = "off", sortMode = "recent", query = "", tab = "lib";
+let audioUrl = null, coverUrl = null, loadedId = null, pendingPos = 0, errCount = 0;
+const saved = (() => { try { return JSON.parse(localStorage.getItem("mb_state") || "{}"); } catch (e) { return {}; } })();
+
+function saveState(pos) {
+  try {
+    localStorage.setItem("mb_state", JSON.stringify({
+      queue, qi, pos: pos ?? (audio.currentTime || 0), shuffle, repeat, sortMode,
+      vol: audio.volume }));
+  } catch (e) {}
+}
+
+/* ---------- helpers ---------- */
+function toast(t, ms = 2400) {
+  const el = $("#toast"); el.textContent = t; el.classList.add("show");
+  clearTimeout(toast.t); toast.t = setTimeout(() => el.classList.remove("show"), ms);
+}
+const fmt = s => { s = Math.max(0, Math.floor(s || 0)); return Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0"); };
+const cleanTitle = n => n.replace(/\.[^.]+$/, "").replace(/^vidssave\.com\s+/i, "").replace(/\s+\d+\s*kbps$/i, "").trim() || n;
+const uid = () => (crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2));
+const norm = t => (t || "").normalize("NFKC");   // turns fancy bold letters into normal ones
+
+/* ---------- ID3 tags (title, artist, embedded cover) ---------- */
+function decodeText(b, enc) {
+  try {
+    if (enc === 0) return new TextDecoder("iso-8859-1").decode(b);
+    if (enc === 1) { const le = !(b[0] === 0xFE && b[1] === 0xFF); return new TextDecoder(le ? "utf-16le" : "utf-16be").decode(b.subarray(b[0] === 0xFF || b[0] === 0xFE ? 2 : 0)); }
+    if (enc === 2) return new TextDecoder("utf-16be").decode(b);
+    return new TextDecoder("utf-8").decode(b);
+  } catch (e) { return ""; }
+}
+const trimNull = s => s.replace(/\0+$/g, "").trim();
+async function readTags(file) {
+  const out = {title: "", artist: "", cover: null};
+  try {
+    const head = new Uint8Array(await file.slice(0, 10).arrayBuffer());
+    if (String.fromCharCode(head[0], head[1], head[2]) !== "ID3" || head[3] < 3) return out;
+    const size = (head[6] << 21) | (head[7] << 14) | (head[8] << 7) | head[9];
+    const buf = new Uint8Array(await file.slice(10, 10 + Math.min(size, 12 * 1024 * 1024)).arrayBuffer());
+    let p = 0;
+    while (p + 10 <= buf.length) {
+      const id = String.fromCharCode(buf[p], buf[p + 1], buf[p + 2], buf[p + 3]);
+      if (!/^[A-Z0-9]{4}$/.test(id)) break;
+      const fs = head[3] === 4 ? (buf[p + 4] << 21) | (buf[p + 5] << 14) | (buf[p + 6] << 7) | buf[p + 7]
+                               : ((buf[p + 4] << 24) | (buf[p + 5] << 16) | (buf[p + 6] << 8) | buf[p + 7]) >>> 0;
+      const d = buf.subarray(p + 10, p + 10 + fs);
+      if (fs <= 0 || p + 10 + fs > buf.length) break;
+      if (id === "TIT2" && d.length > 1) out.title = trimNull(decodeText(d.subarray(1), d[0]));
+      else if (id === "TPE1" && d.length > 1) out.artist = trimNull(decodeText(d.subarray(1), d[0]));
+      else if (id === "APIC" && !out.cover && d.length > 4) {
+        const enc = d[0]; let i = 1; while (i < d.length && d[i] !== 0) i++;
+        const mime = String.fromCharCode(...d.subarray(1, i)) || "image/jpeg";
+        i += 2;                                     // null + picture type
+        if (enc === 1 || enc === 2) { while (i + 1 < d.length && !(d[i] === 0 && d[i + 1] === 0)) i += 2; i += 2; }
+        else { while (i < d.length && d[i] !== 0) i++; i += 1; }
+        if (i < d.length) out.cover = new Blob([d.subarray(i)], {type: /^image\//.test(mime) ? mime : "image/jpeg"});
+      }
+      p += 10 + fs;
+    }
+  } catch (e) {}
+  return out;
+}
+
+async function makeThumb(blob) {           // small picture for lists + average colour for the wash
+  try {
+    const bmp = await createImageBitmap(blob);
+    const c = document.createElement("canvas"); c.width = c.height = 96;
+    const x = c.getContext("2d"), m = Math.min(bmp.width, bmp.height);
+    x.drawImage(bmp, (bmp.width - m) / 2, (bmp.height - m) / 2, m, m, 0, 0, 96, 96);
+    const px = x.getImageData(0, 0, 96, 96).data; let r = 0, g = 0, b = 0, n = 0, best = 0, pick = [60, 63, 74];
+    for (let i = 0; i < px.length; i += 4 * 37) {
+      const R = px[i], G = px[i + 1], B = px[i + 2], mx = Math.max(R, G, B), mn = Math.min(R, G, B);
+      const sat = mx ? (mx - mn) / mx : 0, score = sat * (mx / 255);
+      if (mx > 45 && score > best) { best = score; pick = [R, G, B]; }
+      r += R; g += G; b += B; n++;
+    }
+    return {thumb: c.toDataURL("image/jpeg", 0.72), color: pick.join(",")};
+  } catch (e) { return {thumb: null, color: null}; }
+}
+
+/* ---------- library ---------- */
+async function loadLibrary() {
+  songs = (await getAll("songs")).sort((a, b) => a.added - b.added);
+  byId = new Map(songs.map(s => [s.id, s]));
+}
+async function importFiles(files) {
+  let added = 0, dup = 0, i = 0;
+  const have = new Set(songs.map(s => s.key));
+  for (const f of files) {
+    i++; toast("Adding " + i + " / " + files.length + " …", 60000);
+    const key = f.name + "|" + f.size;
+    if (have.has(key)) { dup++; continue; }
+    const tags = await readTags(f);
+    const th = tags.cover ? await makeThumb(tags.cover) : {thumb: null, color: null};
+    const s = {id: uid(), key, title: tags.title || cleanTitle(f.name), artist: tags.artist || "",
+               added: Date.now() + i, thumb: th.thumb, color: th.color, mime: f.type || ""};
+    try {
+      await putOne("files", {id: s.id, audio: f, cover: tags.cover});
+      await putOne("songs", s);
+    } catch (e) {
+      try { await delOne("files", s.id); } catch (_) {}
+      toast("Not enough storage space for “" + s.title + "”", 5000); break;
+    }
+    songs.push(s); byId.set(s.id, s); have.add(key); added++;
+  }
+  render();
+  toast("Added " + added + (added === 1 ? " song" : " songs") + (dup ? " · " + dup + " already there" : ""), 4000);
+  if (navigator.storage && navigator.storage.persist) navigator.storage.persist();
+  updateInfo();
+}
+async function removeSong(id) {
+  await delOne("songs", id); await delOne("files", id);
+  songs = songs.filter(s => s.id !== id); byId.delete(id);
+  const cur = queue[qi] === id;
+  for (let k = queue.length - 1; k >= 0; k--) if (queue[k] === id) { queue.splice(k, 1); if (k < qi) qi--; }
+  if (orig) orig = orig.filter(x => x !== id);
+  if (cur) { audio.pause(); audio.removeAttribute("src"); loadedId = null; qi = Math.min(qi, queue.length - 1); }
+  render(); refreshPlayerUI(); updateInfo();
+}
+async function updateInfo() {
+  let t = songs.length + (songs.length === 1 ? " song" : " songs");
+  try { const e = await navigator.storage.estimate(); t += " · " + Math.round((e.usage || 0) / 1048576) + " MB used"; } catch (e) {}
+  $("#info").textContent = t;
+}
+function viewList() {
+  let l = songs.slice();
+  const terms = norm(query).toLowerCase().split(/\s+/).filter(Boolean);
+  if (terms.length) l = l.filter(s => { const h = norm(s.title + " " + s.artist).toLowerCase(); return terms.every(t => h.includes(t)); });
+  if (sortMode === "alpha") l.sort((a, b) => norm(a.title).localeCompare(norm(b.title), undefined, {sensitivity: "base"}));
+  else l.reverse();
+  return l;
+}
+
+/* ---------- queue ---------- */
+function setQueue(ids, start) {
+  queue = ids.slice(); qi = start; orig = null;
+  if (shuffle) shuffleOn();
+}
+function shuffleOn() {
+  if (orig) return;
+  orig = queue.slice(); const cur = queue[qi];
+  const rest = queue.filter((_, i) => i !== qi);
+  for (let i = rest.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [rest[i], rest[j]] = [rest[j], rest[i]]; }
+  queue = cur ? [cur, ...rest] : rest; qi = cur ? 0 : -1;
+}
+function shuffleOff() {
+  if (!orig) return;
+  const cur = queue[qi]; queue = orig; orig = null; qi = queue.indexOf(cur);
+}
+function enqueue(id, next) {
+  if (qi === -1 && !queue.length) { queue = [id]; qi = 0; if (orig) orig = [id]; }
+  else { next ? queue.splice(qi + 1, 0, id) : queue.push(id); if (orig) orig.push(id); }
+  toast(next ? "Playing next" : "Added to Up Next"); saveState(); render();
+}
+
+/* ---------- playback ---------- */
+async function playIndex(i, startAt = 0, autoplay = true) {
+  if (i < 0 || i >= queue.length) return;
+  qi = i; const id = queue[i], s = byId.get(id);
+  $("#err").textContent = "";
+  try {
+    const f = await getOne("files", id);
+    if (!f || !f.audio) throw new Error("file missing");
+    if (audioUrl) URL.revokeObjectURL(audioUrl);
+    audioUrl = URL.createObjectURL(f.audio);
+    if (coverUrl) { URL.revokeObjectURL(coverUrl); coverUrl = null; }
+    if (f.cover) coverUrl = URL.createObjectURL(f.cover);
+    loadedId = id; pendingPos = startAt;
+    audio.src = audioUrl;
+    if (autoplay) { await audio.play(); errCount = 0; }
+  } catch (e) {
+    if (e && e.name === "NotAllowedError") { refreshPlayerUI(); return; }
+    $("#err").textContent = "Can't play: " + (s ? norm(s.title) : "");
+    refreshPlayerUI();
+    if (autoplay) skipSoon();
+    return;
+  }
+  refreshPlayerUI(); saveState(0);
+}
+let skipPending = false;
+function skipSoon() {              // one skip per broken song, even if both play() and the error event fire
+  if (skipPending) return;
+  skipPending = true; errCount++;
+  setTimeout(() => { skipPending = false; if (errCount <= Math.min(queue.length, 6)) nextTrack(true); }, 400);
+}
+function nextTrack(auto) {
+  if (!queue.length) return;
+  if (auto && repeat === "one") { audio.currentTime = 0; audio.play(); return; }
+  if (qi + 1 < queue.length) return playIndex(qi + 1);
+  if (repeat === "all" || !auto) return playIndex(0);
+  audio.pause(); audio.currentTime = 0; refreshPlayerUI();
+}
+function prevTrack() {
+  if (!queue.length) return;
+  if (audio.currentTime > 3) { audio.currentTime = 0; return; }
+  playIndex((qi - 1 + queue.length) % queue.length);
+}
+function togglePlay() {
+  if (qi < 0 || !queue.length) { const v = viewList(); if (v.length) { setQueue(v.map(s => s.id), 0); playIndex(0); } return; }
+  if (loadedId !== queue[qi]) return playIndex(qi, pendingPos, true);
+  audio.paused ? audio.play().catch(() => {}) : audio.pause();
+}
+audio.addEventListener("loadedmetadata", () => { if (pendingPos > 0 && isFinite(audio.duration)) { audio.currentTime = Math.min(pendingPos, audio.duration - 0.5); } pendingPos = 0; refreshPlayerUI(); });
+audio.addEventListener("ended", () => nextTrack(true));
+audio.addEventListener("play", () => { refreshButtons(); });
+audio.addEventListener("pause", () => { refreshButtons(); saveState(); });
+audio.addEventListener("error", () => { if (audio.src) { $("#err").textContent = "Can't play this file"; skipSoon(); } });
+let lastT = 0, lastSave = 0, dragging = false;
+audio.addEventListener("timeupdate", () => {
+  const now = Date.now(); if (now - lastT < 500) return; lastT = now;
+  const d = audio.duration, c = audio.currentTime;
+  $("#mprog").style.width = d ? (100 * c / d) + "%" : "0";
+  if ($("#full").classList.contains("open") && !dragging) {
+    $("#tcur").textContent = fmt(c); $("#tdur").textContent = d && isFinite(d) ? fmt(d) : "--:--";
+    $("#seek").value = d ? 1000 * c / d : 0;
+  }
+  if (now - lastSave > 10000) { lastSave = now; saveState(); }
+  if ("mediaSession" in navigator && d && isFinite(d)) { try { navigator.mediaSession.setPositionState({duration: d, position: Math.min(c, d), playbackRate: 1}); } catch (e) {} }
+});
+
+/* ---------- UI refresh ---------- */
+function setWash(s) { document.documentElement.style.setProperty("--wash", (s && s.color) || "22,23,26"); }
+function refreshButtons() {
+  const p = !audio.paused && !!audio.src;
+  $("#play").textContent = p ? "❚❚" : "▶"; $("#mplay").textContent = p ? "❚❚" : "▶";
+  $("#shuf").classList.toggle("on", shuffle); $("#rep").classList.toggle("on", repeat !== "off");
+  $("#rep").textContent = repeat === "one" ? "Repeat 1" : repeat === "all" ? "Repeat all" : "Repeat";
+  if ("mediaSession" in navigator) navigator.mediaSession.playbackState = p ? "playing" : "paused";
+}
+function setImg(el, src, fallback) {
+  if (src) { el.src = src; el.style.visibility = "visible"; el.textContent = ""; } else { el.removeAttribute("src"); el.style.visibility = "hidden"; }
+}
+function refreshPlayerUI() {
+  const s = byId.get(queue[qi]);
+  $("#mini").classList.toggle("hidden", !s);
+  $("#mtitle").textContent = s ? norm(s.title) : ""; $("#msub").textContent = s ? s.artist : "";
+  $("#ftitle").textContent = s ? norm(s.title) : "Nothing playing"; $("#fsub").textContent = s ? s.artist : "";
+  setImg($("#mthumb"), s && s.thumb); setImg($("#cover"), coverUrl || (s && s.thumb));
+  if (!coverUrl && s && !s.thumb) $("#cover").style.visibility = "hidden";
+  setWash(s); refreshButtons();
+  if (s && "mediaSession" in navigator) {
+    navigator.mediaSession.metadata = new MediaMetadata({title: norm(s.title), artist: s.artist || "MusicBox",
+      artwork: s.thumb ? [{src: s.thumb, sizes: "96x96", type: "image/jpeg"}] : []});
+  }
+  const d = audio.duration;
+  $("#tdur").textContent = d && isFinite(d) ? fmt(d) : "--:--";
+  render();
+}
+
+function row(s, opts) {
+  const r = document.createElement("div"); r.className = "row" + (queue[qi] === s.id && opts.mark ? " cur" : "");
+  const th = document.createElement(s.thumb ? "img" : "div"); th.className = "thumb";
+  if (s.thumb) th.src = s.thumb; else th.textContent = "♪";
+  const m = document.createElement("div"); m.className = "meta";
+  m.innerHTML = '<div class="t"></div><div class="s"></div>';
+  m.firstChild.textContent = norm(s.title); m.lastChild.textContent = s.artist || "";
+  r.append(th, m);
+  r.onclick = () => opts.play();
+  for (const [label, fn, aria] of opts.btns) {
+    const b = document.createElement("button"); b.className = "ib"; b.textContent = label; b.setAttribute("aria-label", aria);
+    b.onclick = e => { e.stopPropagation(); fn(); }; r.append(b);
+  }
+  return r;
+}
+function render() {
+  const el = $("#list"); el.textContent = "";
+  $("#libBar").classList.toggle("hidden", tab !== "lib");
+  $("#addBtn").classList.toggle("hidden", tab !== "lib");
+  if (tab === "lib") {
+    const v = viewList();
+    if (!songs.length) { el.innerHTML = '<div class="empty">No songs yet.<br>Tap <b>+ Add songs</b> and choose the songs you want on your phone. They are stored in the app and play offline.</div>'; return; }
+    if (!v.length) { el.innerHTML = '<div class="empty">No matches.</div>'; return; }
+    const frag = document.createDocumentFragment(), ids = v.map(s => s.id);
+    v.forEach((s, i) => frag.append(row(s, {mark: true,
+      play: () => { setQueue(ids, i); playIndex(i); },
+      btns: [["＋", () => enqueue(s.id, false), "Add to queue"], ["⋮", () => songMenu(s), "More"]]})));
+    el.append(frag);
+  } else {
+    const ids = queue.slice(Math.max(0, qi));
+    if (!ids.length) { el.innerHTML = '<div class="empty">The queue is empty.<br>Add songs with ＋ in the Library.</div>'; return; }
+    const base = Math.max(0, qi), frag = document.createDocumentFragment();
+    ids.forEach((id, k) => { const s = byId.get(id); if (!s) return; const idx = base + k;
+      const btns = k === 0 ? [] : [["▲", () => moveQ(idx, idx - 1), "Move up"], ["▼", () => moveQ(idx, idx + 1), "Move down"], ["✕", () => { removeQ(idx); }, "Remove"]];
+      frag.append(row(s, {mark: k === 0, play: () => playIndex(idx), btns})); });
+    el.append(frag);
+  }
+}
+function moveQ(i, j) {
+  if (j < 0 || j >= queue.length || i === qi) return;
+  const cur = queue[qi]; queue.splice(j, 0, queue.splice(i, 1)[0]); qi = queue.indexOf(cur); saveState(); render();
+}
+function removeQ(i) { if (i === qi) return; queue.splice(i, 1); if (i < qi) qi--; saveState(); render(); }
+
+/* ---------- sheet menu ---------- */
+function sheet(title, items) {
+  const b = $("#sheetBox"); b.textContent = "";
+  const h = document.createElement("h3"); h.textContent = title; b.append(h);
+  for (const [label, fn, danger] of items) {
+    const x = document.createElement("button"); x.textContent = label; if (danger) x.className = "danger";
+    x.onclick = () => { closeSheet(); fn(); }; b.append(x);
+  }
+  const c = document.createElement("button"); c.textContent = "Cancel"; c.style.color = "var(--dim)"; c.onclick = closeSheet; b.append(c);
+  $("#sheet").classList.add("open");
+}
+const closeSheet = () => $("#sheet").classList.remove("open");
+$("#sheet").addEventListener("click", e => { if (e.target.id === "sheet") closeSheet(); });
+let coverFor = null;
+function songMenu(s) {
+  sheet(norm(s.title), [
+    ["Play next", () => enqueue(s.id, true)],
+    ["Add to Up Next", () => enqueue(s.id, false)],
+    ["Rename", () => { const t = prompt("Title", s.title); if (t && t.trim()) { s.title = t.trim(); putOne("songs", s); refreshPlayerUI(); } }],
+    ["Set artist", () => { const t = prompt("Artist", s.artist); if (t !== null) { s.artist = t.trim(); putOne("songs", s); refreshPlayerUI(); } }],
+    ["Set cover picture", () => { coverFor = s; $("#coverPicker").click(); }],
+    ["Remove from phone", () => { if (confirm("Remove “" + norm(s.title) + "” from this app? Your other copies of the file are not affected.")) removeSong(s.id); }, true],
+  ]);
+}
+$("#coverPicker").onchange = async e => {
+  const f = e.target.files[0]; e.target.value = ""; if (!f || !coverFor) return;
+  const s = coverFor; coverFor = null;
+  const th = await makeThumb(f); const rec = await getOne("files", s.id);
+  if (!rec) return; rec.cover = f; await putOne("files", rec);
+  s.thumb = th.thumb; s.color = th.color; await putOne("songs", s);
+  if (queue[qi] === s.id) { if (coverUrl) URL.revokeObjectURL(coverUrl); coverUrl = URL.createObjectURL(f); }
+  refreshPlayerUI(); toast("Cover updated");
+};
+
+/* ---------- wiring ---------- */
+$("#addBtn").onclick = () => $("#picker").click();
+$("#picker").onchange = e => { const fs = [...e.target.files]; e.target.value = ""; if (fs.length) importFiles(fs); };
+$("#search").oninput = e => { query = e.target.value; render(); };
+$("#sortBtn").onclick = () => { sortMode = sortMode === "recent" ? "alpha" : "recent"; $("#sortBtn").textContent = sortMode === "recent" ? "Recent" : "A–Z"; saveState(); render(); };
+$("#tabLib").onclick = () => { tab = "lib"; $("#tabLib").classList.add("on"); $("#tabQ").classList.remove("on"); render(); };
+$("#tabQ").onclick = () => { tab = "q"; $("#tabQ").classList.add("on"); $("#tabLib").classList.remove("on"); render(); };
+for (const [a, b] of [["#play", "#mplay"]]) { $(a).onclick = togglePlay; $(b).onclick = togglePlay; }
+$("#next").onclick = $("#mnext").onclick = () => nextTrack(false);
+$("#prev").onclick = $("#mprev").onclick = prevTrack;
+$("#shuf").onclick = () => { shuffle = !shuffle; shuffle ? shuffleOn() : shuffleOff(); saveState(); refreshButtons(); render(); };
+$("#rep").onclick = () => { repeat = {off: "all", all: "one", one: "off"}[repeat]; saveState(); refreshButtons(); };
+$("#mopen").onclick = () => { $("#full").classList.add("open"); history.pushState({p: 1}, ""); refreshPlayerUI(); };
+$("#fclose").onclick = () => { if ($("#full").classList.contains("open")) history.back(); };
+window.addEventListener("popstate", () => $("#full").classList.remove("open"));  // phone back button closes the player
+$("#fmenu").onclick = () => { const s = byId.get(queue[qi]); if (s) songMenu(s); };
+const seek = $("#seek");
+seek.addEventListener("input", () => { dragging = true; const d = audio.duration; if (d) $("#tcur").textContent = fmt(seek.value / 1000 * d); });
+seek.addEventListener("change", () => { const d = audio.duration; if (d && isFinite(d)) audio.currentTime = seek.value / 1000 * d; dragging = false; saveState(); });
+$("#vol").oninput = e => { audio.volume = e.target.value / 100; };
+audio.addEventListener("volumechange", () => { $("#vol").value = Math.round(audio.volume * 100); });
+
+if ("mediaSession" in navigator) {
+  const h = (n, f) => { try { navigator.mediaSession.setActionHandler(n, f); } catch (e) {} };
+  h("play", () => togglePlay()); h("pause", () => audio.pause());
+  h("previoustrack", prevTrack); h("nexttrack", () => nextTrack(false));
+  h("seekto", d => { if (d.seekTime != null) audio.currentTime = d.seekTime; });
+  h("seekbackward", () => { audio.currentTime = Math.max(0, audio.currentTime - 10); });
+  h("seekforward", () => { audio.currentTime += 10; });
+}
+
+/* ---------- start ---------- */
+(async function init() {
+  if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
+  audio.volume = typeof saved.vol === "number" ? Math.min(1, Math.max(0, saved.vol)) : 1;
+  $("#vol").value = Math.round(audio.volume * 100);
+  if (saved.sortMode) { sortMode = saved.sortMode; $("#sortBtn").textContent = sortMode === "recent" ? "Recent" : "A–Z"; }
+  shuffle = !!saved.shuffle; if (["off", "all", "one"].includes(saved.repeat)) repeat = saved.repeat;
+  try { await loadLibrary(); } catch (e) { toast("Could not open storage. Is private browsing on?", 6000); }
+  const q = (saved.queue || []).filter(id => byId.has(id));
+  if (q.length) {                       // restore last song + position without loading audio yet
+    const cur = (saved.queue || [])[saved.qi];
+    queue = q; qi = Math.max(0, q.indexOf(cur)); pendingPos = Number(saved.pos) || 0;
+  }
+  refreshPlayerUI(); updateInfo();
+})();
+</script>
+</body>
+</html>
